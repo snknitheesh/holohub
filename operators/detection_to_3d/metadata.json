@@ -1,0 +1,30 @@
+{
+	"$schema": "urn:holohub:operator:v1",
+	"operator": {
+		"name": "DetectionTo3DOp",
+		"authors": [
+			{
+				"name": "Nitheesh Kumar",
+				"affiliation": "Zobot Lab"
+			}
+		],
+		"language": ["C++", "Python"],
+		"version": "0.1.0",
+		"changelog": {
+			"0.1.0": "Initial release: GPU lift of 2D detection boxes to 3D centroids by sampling depth at each box center (pixel/normalized boxes, patch-median depth, optional scores/labels passthrough)."
+		},
+		"holoscan_sdk": {
+			"minimum_required_version": "4.0.0",
+			"tested_versions": [
+				"4.3.0"
+			]
+		},
+		"platforms": [
+			"x86_64",
+			"aarch64"
+		],
+		"tags": ["Detection", "3D", "Depth", "Robotics", "Perception"],
+		"ranking": 3,
+		"requirements": {}
+	}
+}

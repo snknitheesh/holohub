@@ -49,6 +49,8 @@ add_holohub_application(deltacast_receiver DEPENDS
                         OPERATORS deltacast_videomaster
                         )
 
+add_holohub_application(detection_to_3d_demo DEPENDS OPERATORS detection_to_3d)
+
 add_holohub_application(depth_anything_v2)
 
 add_subdirectory(distributed)

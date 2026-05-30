@@ -1,0 +1,42 @@
+{
+	"$schema": "urn:holohub:application:v1",
+	"application": {
+		"name": "Detection to 3D Demo",
+		"description": "Hardware-free demo of DetectionTo3DOp: a synthetic GPU depth image plus a few detection boxes are lifted into 3D centroids and printed each frame.",
+		"authors": [
+			{
+				"name": "Nitheesh Kumar",
+				"affiliation": "Zobot Lab"
+			}
+		],
+		"language": "Python",
+		"version": "0.1.0",
+		"changelog": {
+			"0.1.0": "Initial release: synthetic depth + boxes -> DetectionTo3DOp -> 3D centroid sink."
+		},
+		"holoscan_sdk": {
+			"minimum_required_version": "4.0.0",
+			"tested_versions": [
+				"4.3.0"
+			]
+		},
+		"platforms": [
+			"x86_64",
+			"aarch64"
+		],
+		"tags": ["Detection", "3D", "Depth", "Robotics", "Perception"],
+		"ranking": 3,
+		"requirements": {
+			"python-packages": [
+				{
+					"name": "cupy",
+					"version": "13.6.0"
+				}
+			]
+		},
+		"run": {
+			"command": "python3 <holohub_app_source>/detection_to_3d_demo.py",
+			"workdir": "holohub_bin"
+		}
+	}
+}
