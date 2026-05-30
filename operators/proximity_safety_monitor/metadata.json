@@ -1,0 +1,30 @@
+{
+	"$schema": "urn:holohub:operator:v1",
+	"operator": {
+		"name": "ProximitySafetyMonitorOp",
+		"authors": [
+			{
+				"name": "nitheesh kumar",
+				"affiliation": "HoloHub Community"
+			}
+		],
+		"language": ["C++", "Python"],
+		"version": "0.1.0",
+		"changelog": {
+			"0.1.0": "Initial release: GPU depth-based proximity safety monitor (Z/radial zones, optional mask gating, status/min-distance/counts output). NOT a certified safety device."
+		},
+		"holoscan_sdk": {
+			"minimum_required_version": "3.5.0",
+			"tested_versions": [
+				"3.5.0"
+			]
+		},
+		"platforms": [
+			"x86_64",
+			"aarch64"
+		],
+		"tags": ["Robotics", "Safety", "Depth", "Point Cloud", "Camera"],
+		"ranking": 4,
+		"requirements": {}
+	}
+}
