@@ -52,12 +52,13 @@ if LANGUAGE == "python":
 # Remove any directories that became empty (from Jinja2 conditional filenames).
 remove_empty_dirs()
 
-# Locate holohub-internal so we can copy in companion files. The cookiecutter
-# runs this hook from a temp file, so __file__ is unreliable. The HoloHub CLI
-# sets HOLOHUB_ROOT before invoking cookiecutter; standalone cookiecutter use
-# falls back to a sibling-directory search.
+# Locate the HoloHub clone so we can copy in companion CMake helpers. The
+# cookiecutter runs this hook from a temp file, so __file__ is unreliable.
+# holoscan-cli sets HOLOSCAN_CLI_ROOT to the HoloHub root before invoking
+# cookiecutter (legacy HOLOHUB_ROOT is honored too); standalone cookiecutter
+# use falls back to a sibling-directory search.
 _holohub_root = None
-_env_root = os.environ.get("HOLOHUB_ROOT")
+_env_root = os.environ.get("HOLOSCAN_CLI_ROOT") or os.environ.get("HOLOHUB_ROOT")
 _candidates = (
     pathlib.Path.cwd().parent / "holohub-internal",
     pathlib.Path.cwd().parent.parent / "holohub-internal",
@@ -76,10 +77,11 @@ if _holohub_root is None:
     _candidate_list = ", ".join(str(c) for c in _candidates)
     warnings.warn(
         f"HoloHub root not found. CMake helpers were not copied into cmake/.\n"
-        f"  HOLOHUB_ROOT env var: {_env_root!r}\n"
+        f"  HOLOSCAN_CLI_ROOT env var: {os.environ.get('HOLOSCAN_CLI_ROOT')!r}\n"
+        f"  HOLOHUB_ROOT env var:      {os.environ.get('HOLOHUB_ROOT')!r}\n"
         f"  cwd: {pathlib.Path.cwd()}\n"
         f"  Candidates checked: {_candidate_list}\n"
-        f"To fix: set HOLOHUB_ROOT=/path/to/holohub before running cookiecutter,\n"
+        f"To fix: set HOLOSCAN_CLI_ROOT=/path/to/holohub before running cookiecutter,\n"
         f"  or rename your HoloHub clone to 'holohub' or 'holohub-internal' as a\n"
         f"  sibling of the generated module directory.",
         stacklevel=1,
@@ -87,7 +89,11 @@ if _holohub_root is None:
 
 # Copy CMake helpers from the HoloHub clone so the module builds standalone:
 #   - HoloHubConfigHelpers.cmake: add_holohub_application/operator/package gating
-#   - holohub_configure_deb.cmake: deb packaging helper used by the root CMakeLists
+#   - holohub_configure_deb.cmake: deb packaging helper used by the root
+#     CMakeLists. Brings a companion asset:
+#       - Config.cmake.in: package-config template the helper feeds to
+#         configure_package_config_file() when EXPORT_NAME is set, so
+#         downstream find_package(<module>) resolves the exported targets
 #   - pybind11_add_holohub_module.cmake: fetches pybind11 at the HSDK-pinned
 #     version + ABI-aligned target. Brings two companion assets:
 #       - pybind11/__init__.py: per-operator __init__ template configured by
@@ -100,6 +106,7 @@ if _holohub_root:
     for _rel in (
         ("cmake", "HoloHubConfigHelpers.cmake"),
         ("cmake", "modules", "holohub_configure_deb.cmake"),
+        ("cmake", "modules", "Config.cmake.in"),
         ("cmake", "pybind11_add_holohub_module.cmake"),
     ):
         _src = _holohub_root.joinpath(*_rel)
@@ -113,6 +120,25 @@ if _holohub_root:
             if _dst_dir.exists():
                 shutil.rmtree(_dst_dir)
             shutil.copytree(_src_dir, _dst_dir)
+
+# Copy shared CI scripts from the HoloHub clone so the module's pre-commit
+# hooks have access to check_copyright.py and its gitutils dependency without
+# maintaining a fork.
+if _holohub_root:
+    _scripts_src = _holohub_root / ".github" / "workflows" / "scripts"
+    _scripts_dst = pathlib.Path(".github") / "workflows" / "scripts"
+    _scripts_dst.mkdir(parents=True, exist_ok=True)
+    for _script in ("check_copyright.py", "gitutils.py"):
+        _src = _scripts_src / _script
+        if _src.exists():
+            shutil.copy2(_src, _scripts_dst / _script)
+        else:
+            warnings.warn(
+                f"Expected script not found: {_src}\n"
+                f"The check-copyright pre-commit hook will fail until this file is present.\n"
+                f"Copy it manually from your HoloHub clone into .github/workflows/scripts/.",
+                stacklevel=1,
+            )
 
 # Make the module CLI wrapper executable.
 wrapper = "./holohub"
@@ -136,6 +162,9 @@ try:
     subprocess.run(["git", "add", "."], check=True, capture_output=True)
     git_ok = True
 except (subprocess.CalledProcessError, FileNotFoundError):
+    # Git isn't required to use the scaffold — silently skip init when git
+    # is missing or refuses. The next-steps message below still prints the
+    # manual git commands the user can run.
     pass
 
 # ── Next-steps message ────────────────────────────────────────────────────────

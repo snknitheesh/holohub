@@ -1,19 +1,32 @@
 # High Performance Networking with Holoscan
 
+!!! warning "MIGRATION NOTICE"
+
+    **This tutorial covers the legacy in-tree networking implementation.**
+    High-performance networking is now implemented in the standalone networking
+    library, [DAQIRI](https://github.com/NVIDIA/daqiri). The content below is
+    retained for historical reference.
+
+    For the latest guidelines, please refer to the DAQIRI documentation:
+
+    - [System Configuration](https://nvidia.github.io/daqiri/tutorials/system_configuration/) — prepare and tune your system
+    - [Benchmarking Examples](https://nvidia.github.io/daqiri/benchmarks/raw_benchmarking/) — measure networking throughput and latency
+    - [DAQIRI + Holoscan Integration](https://nvidia.github.io/daqiri/tutorials/daqiri-holoscan-integration/) — connect DAQIRI to a Holoscan pipeline
+
 This tutorial demonstrates how to use the Advanced Network library (referred to as `advanced_network` in HoloHub) for low latency and high throughput communication through NVIDIA SmartNICs. With a properly tuned system, the Advanced Network library can achieve hundreds of Gbps with latencies in the low microseconds.
 
 !!! note
 
     This solution is designed for users who want to create a Holoscan application that will interface with an external system or sensor over Ethernet.
 
-    - For high performance communication with systems also running Holoscan, refer to the [Holoscan distributed application documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_create_distributed_app.html) instead.
+    - For high performance communication with systems also running Holoscan, refer to the [Holoscan distributed application documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/using-the-sdk/create-a-distributed-application) instead.
     - For JESD-compliant sensor without Ethernet support, consider the [Holoscan Sensor Bridge](https://docs.nvidia.com/holoscan/sensor-bridge/latest/introduction.html) for an FPGA-based interface to Holoscan.
 
 ## Prerequisites
 
-Achieving High Performance Networking with Holoscan requires a system with an [**NVIDIA SmartNIC**](https://www.nvidia.com/en-us/networking/ethernet-adapters/) and a [**discrete GPU**](https://www.nvidia.com/en-us/design-visualization/desktop-graphics/). That is the case of [NVIDIA Data Center](https://www.nvidia.com/en-us/data-center/) systems, or edge systems like the [NVIDIA IGX](https://www.nvidia.com/en-us/edge-computing/products/igx/) platform and the [NVIDIA Project DIGITS](https://www.nvidia.com/en-us/project-digits/). `x86_64` systems equipped with these components are also supported, though the performance will vary greatly depending on the PCIe topology of the system (more on this [below](#31-ensure-ideal-pcie-topology)).
+Achieving High Performance Networking with Holoscan requires a system with an [**NVIDIA SmartNIC**](https://www.nvidia.com/en-us/networking/ethernet-adapters/) and a [**discrete GPU**](https://www.nvidia.com/en-us/design-visualization/desktop-graphics/). That is the case of [NVIDIA Data Center](https://www.nvidia.com/en-us/data-center/) systems, or edge systems like the [NVIDIA IGX](https://www.nvidia.com/en-us/edge-computing/products/igx/) platform and the [NVIDIA DGX Spark](https://www.nvidia.com/en-us/products/workstations/dgx-spark/). `x86_64` systems equipped with these components are also supported, though the performance will vary greatly depending on the PCIe topology of the system (more on this [below](#31-ensure-ideal-pcie-topology)).
 
-In this tutorial, we will be developing on an **NVIDIA IGX Orin platform** with [IGX SW 1.1](https://docs.nvidia.com/igx-orin/user-guide/latest/base-os.html) and an [NVIDIA RTX 6000 ADA GPU](https://www.nvidia.com/en-us/design-visualization/rtx-6000/), which is the configuration that is currently actively tested. The concepts should be applicable to other systems based on Ubuntu 22.04 as well. It should also work on other Linux distributions with a glibc version of 2.35 or higher by containerizing the dependencies and applications on top of an Ubuntu 22.04 image, but this is not actively tested at this time.
+In this tutorial, we will be developing on an **NVIDIA IGX Orin platform** with [IGX SW 1.1](https://docs.nvidia.com/igx/user-guide/latest/base-os.html) and an [NVIDIA RTX 6000 ADA GPU](https://www.nvidia.com/en-us/design-visualization/rtx-6000/), which is the configuration that is currently actively tested. The concepts should be applicable to other systems based on Ubuntu 22.04 as well. It should also work on other Linux distributions with a glibc version of 2.35 or higher by containerizing the dependencies and applications on top of an Ubuntu 22.04 image, but this is not actively tested at this time.
 
 !!! Warning "Secure boot conflict"
 
@@ -244,7 +257,7 @@ ibv_devinfo
 
 **For Holoscan Networking, we want the NIC to use the ETH link layer.** To switch the link layer mode, there are two possible options:
 
-1. On IGX Orin developer kits, you can switch that setting through the BIOS: [see IGX Orin documentation](https://docs.nvidia.com/igx-orin/user-guide/latest/switch-network-link.html).
+1. On IGX Orin developer kits, you can switch that setting through the BIOS: [see IGX Orin documentation](https://docs.nvidia.com/igx/user-guide/latest/switch-network-link.html).
 2. On any system with a NVIDIA NIC (including the IGX Orin developer kits), you can run the commands below from a terminal:
 
     1. Identify the PCI address of your NVIDIA NIC
@@ -1994,7 +2007,7 @@ This section will guide you through building your own application using the `adv
         ./applications/adv_networking_bench/cpp/main.cpp
         ```
 
-    If you are not yet familiar with how Holoscan applications are constructed, please refer to the [Holoscan SDK documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/holoscan_core.html) first.
+    If you are not yet familiar with how Holoscan applications are constructed, please refer to the [Holoscan SDK documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/using-the-sdk/holoscan-core) first.
 
 Let's look at the `adv_networking_bench_default_tx_rx.yaml` file below. Click on the (1) icons below to expand explanations for each annotated line.
 { .annotate }
@@ -2092,7 +2105,7 @@ bench_tx: # (31)!
   udp_dst_port: 4096        # UDP destination port
 ```
 
-1. The `scheduler` section is passed to the multi threaded scheduler we declare in the `#!cpp main()` function of this application. See the [holoscan SDK documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/components/schedulers.html) and [API docs](https://docs.nvidia.com/holoscan/sdk-user-guide/api/cpp/classholoscan_1_1multithreadscheduler.html) for more details. This is related to the Holoscan core library and is not specific to Holoscan Networking.
+1. The `scheduler` section is passed to the multi threaded scheduler we declare in the `#!cpp main()` function of this application. See the [holoscan SDK documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/components/schedulers#multithreadscheduler) for more details. This is related to the Holoscan core library and is not specific to Holoscan Networking.
 2. The `advanced_network` section is passed to the `advanced_network::adv_net_init` which is responsible for setting up the NIC. That function should be called in your `#!cpp Application::compose()` function.
 3. `manager` is the backend networking library. default: `dpdk`. Other: `gpunetio` (DOCA GPUNet IO + DOCA Ethernet & Flow). Coming soon: `rivermax`, `rdma`.
 4. `master_core` is the ID of the CPU core used for setup. It does not need to be isolated, and is recommended to differ differ from the `cpu_core` fields below used for polling the NIC.
@@ -2290,11 +2303,14 @@ bench_tx: # (31)!
     5. Run your application like so:
 
         ```bash
-        ./holohub run --img holohub:my_app --docker-opts "-u 0 --privileged" --bash -c "./build/my_app/applications/my_app my_app_config.yaml"
+        ./holohub run-container my_app --img holohub:my_app \
+          --docker-opts "-u 0 --privileged" -- \
+          "./build/my_app/applications/my_app my_app_config.yaml"
         ```
 
         or, if you have set up a shortcut to run your application with its config file through its `metadata.json` (see other apps for examples):
 
         ```bash
-        ./holohub run --no-local-build --container_args " -u 0 --privileged"
+        ./holohub run my_app --no-local-build --img holohub:my_app \
+          --docker-opts "-u 0 --privileged"
         ```

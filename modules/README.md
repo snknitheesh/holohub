@@ -13,12 +13,13 @@ A **Holoscan Module** is a library project that extends the Holoscan SDK API.
 Run the following command to initialize a new module adhering to HoloHub conventions
 from the provided cookiecutter template. The template will prompt for several project
 details (name, project languages, description) before creating the new project directory
-on your local system.
+on your local system. Pass the unprefixed module name; the template creates a
+`holoscan-<name>` repository directory.
 
 ```bash
 pip install cookiecutter
 
-./holohub create <my_module> --template modules/template
+./holohub create my-module --template modules/template
 ```
 
 The generated project is a self-contained git repository with its own operators/,
@@ -63,7 +64,7 @@ See `modules/holoscan-gstreamer/` for a complete reference example.
 
 ### Dependency Resolution for In-Tree Modules
 
-The HoloHub CLI resolver (`utilities/cli/external_resolver.py`) automatically
+The `holoscan-cli` resolver automatically
 recognizes in-tree modules: a dependency with no `source` block is looked up in
 `modules/<name>/metadata.json`. If found, the dep is marked `is_internal=True` and
 the CMake manifest emits a comment instead of a FetchContent_Declare — the operators

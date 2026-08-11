@@ -41,7 +41,7 @@ _scripts_dir = str(Path(__file__).resolve().parent)
 if _scripts_dir not in sys.path:
     sys.path.insert(0, _scripts_dir)
 
-from clone_module import clone_external_module  # noqa: E402
+from clone_module import clone_external_module
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -117,7 +117,18 @@ def resolve_module_metadata(entry: dict, holohub_root: Path) -> tuple[dict, Path
             with metadata_path.open() as f:
                 metadata = json.load(f)
             return metadata, module_root, None
-        except Exception as e:
+        except (
+            ArithmeticError,
+            AssertionError,
+            AttributeError,
+            EOFError,
+            ImportError,
+            LookupError,
+            OSError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ) as e:
             logger.warning(f"Failed to read metadata for in-tree module '{name}': {e}")
             return None
     else:
@@ -142,7 +153,18 @@ def resolve_module_metadata(entry: dict, holohub_root: Path) -> tuple[dict, Path
             with metadata_path.open() as f:
                 metadata = json.load(f)
             return metadata, clone_path, tmp_dir
-        except Exception as e:
+        except (
+            ArithmeticError,
+            AssertionError,
+            AttributeError,
+            EOFError,
+            ImportError,
+            LookupError,
+            OSError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ) as e:
             logger.warning(f"Failed to clone external module '{name}' from {url}@{ref}: {e}")
             return None
 
@@ -171,7 +193,18 @@ def resolve_readme(metadata_module: dict, module_root: Path) -> str:
     if readme_path.exists():
         try:
             return readme_path.read_text(encoding="utf-8")
-        except Exception as e:
+        except (
+            ArithmeticError,
+            AssertionError,
+            AttributeError,
+            EOFError,
+            ImportError,
+            LookupError,
+            OSError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ) as e:
             logger.warning(f"Could not read README at {readme_path}: {e}")
 
     logger.warning(f"No README found for module '{metadata_module.get('name')}' at {readme_path}")
@@ -208,7 +241,18 @@ def _rewrite_image_url(raw_url: str, module_root: Path, source_url: str, ref: st
             )
             rel = resolved.relative_to(holohub_root)
             return f"{HOLOHUB_RAW_BASE}/{rel}"
-        except Exception:
+        except (
+            ArithmeticError,
+            AssertionError,
+            AttributeError,
+            EOFError,
+            ImportError,
+            LookupError,
+            OSError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ):
             return raw_url
     else:
         # External: rewrite relative to repo root via raw URL
@@ -269,6 +313,9 @@ def build_metadata_header(metadata_module: dict, entry: dict) -> str:
     homepage = metadata_module.get("homepage")
     homepage_str = f"[{homepage}]({homepage})" if homepage else None
 
+    operator_names = metadata_module.get("operator_names", [])
+    operators_str = ", ".join(f"`{op}`" for op in operator_names) if operator_names else None
+
     lines_input = [
         ("tag", "Version", version),
         ("person", "Authors", authors_str),
@@ -279,6 +326,7 @@ def build_metadata_header(metadata_module: dict, entry: dict) -> str:
         ("law", "License", license_str),
         ("sparkle-fill", "NVIDIA quality score", quality_str),
         ("package", "Install", install_str),
+        ("tools", "Operators", operators_str),
         ("home", "Homepage", homepage_str),
     ]
 
@@ -308,7 +356,17 @@ def generate_detail_page(
     tags = metadata_module.get("tags", [])
     tags_yaml = "\n".join(f"  - {t}" for t in tags)
 
-    frontmatter = f'---\ntitle: "{name}"\ntags:\n{tags_yaml}\n---\n\n'
+    description = metadata_module.get("description") or ""
+    description = re.sub(r"\s+", " ", str(description)).strip()
+    if not description:
+        description = f"{name} — a Holoscan module in HoloHub, the Holoscan Ecosystem."
+    if len(description) > 160:
+        description = description[:157].rstrip() + "..."
+    description_yaml = description.replace("\\", "\\\\").replace('"', '\\"')
+
+    frontmatter = (
+        f'---\ntitle: "{name}"\ndescription: "{description_yaml}"\ntags:\n{tags_yaml}\n---\n\n'
+    )
 
     metadata_header = build_metadata_header(metadata_module, entry)
 
@@ -373,12 +431,20 @@ def generate_module_card(entry: dict, metadata_module: dict) -> str:
     source_badge_color = "#5f9300" if not url else "#0077b6"
     source_badge_label = "In-Tree" if not url else "External"
 
+    preview_ops = operators[:2]
+    overflow = len(operators) - 2
     operator_badges = "".join(
         f'<span style="display:inline-block;background:var(--md-code-bg-color);'
         f"color:var(--md-code-fg-color);padding:0.1rem 0.4rem;border-radius:0.2rem;"
         f'font-size:0.6rem;margin:0.1rem;">{op}</span>'
-        for op in operators
+        for op in preview_ops
     )
+    if overflow > 0:
+        operator_badges += (
+            f'<span style="display:inline-block;background:var(--md-default-fg-color--lightest);'
+            f"color:var(--md-default-fg-color--light);padding:0.1rem 0.4rem;border-radius:0.2rem;"
+            f'font-size:0.6rem;margin:0.1rem;font-style:italic;">+{overflow} more</span>'
+        )
 
     platform_pills = "".join(
         f'<span style="display:inline-block;background:var(--md-default-fg-color--lightest);'

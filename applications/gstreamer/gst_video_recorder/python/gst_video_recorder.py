@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 
@@ -32,10 +32,9 @@ except ImportError as exc:
 
 from holoscan.conditions import CountCondition
 from holoscan.core import Application, Operator, OperatorSpec
+from holoscan.gstreamer import GstVideoRecorderOp
 from holoscan.operators import FormatConverterOp, V4L2VideoCaptureOp
 from holoscan.resources import UnboundedAllocator
-
-from holohub.holoscan_gstreamer_bridge import GstVideoRecorderOp
 
 
 def parse_pattern(value: str) -> int:
@@ -69,8 +68,8 @@ def parse_v4l2_pixel_format(value: str) -> str:
     return pixel_format
 
 
-def parse_key_value_properties(items: list[str]) -> Dict[str, Any]:
-    props: Dict[str, Any] = {}
+def parse_key_value_properties(items: list[str]) -> dict[str, Any]:
+    props: dict[str, Any] = {}
     for item in items:
         if "=" not in item:
             raise SystemExit(f"invalid --property '{item}', expected KEY=VALUE")
@@ -386,7 +385,18 @@ def main() -> int:
         app.run()
     except KeyboardInterrupt:
         return 130
-    except Exception as exc:
+    except (
+        ArithmeticError,
+        AssertionError,
+        AttributeError,
+        EOFError,
+        ImportError,
+        LookupError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 

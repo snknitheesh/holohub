@@ -16,11 +16,11 @@ Tracks2Endo4D combines state-of-the-art point tracking with 3D reconstruction to
 
 ### Core Technologies
 
-| Component        | Description                                                                                                             | Link                                                                        |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| **TapNext**      | "Tracking Any Point" reformulated as next-token prediction for robust long-range point tracking                         | [GitHub](https://github.com/google-deepmind/tapnet)                         |
-| **TracksTo4D**   | NVIDIA Research's encoder-based method that infers 3D structure and camera motion from 2D tracks without 3D supervision | [Project Page](https://tracks-to-4d.github.io/)                             |
-| **Holoscan SDK** | NVIDIA's platform for building high-performance streaming AI applications                                               | [Documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/index.html) |
+| Component          | Description                                                                                                               | Link                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **TapNext**        | "Tracking Any Point" reformulated as next-token prediction for robust long-range point tracking                           | [GitHub](https://github.com/google-deepmind/tapnet)                                              |
+| **TracksTo4D**     | NVIDIA Research's encoder-based method that infers 3D structure and camera motion from 2D tracks without 3D supervision   | [Project Page](https://tracks-to-4d.github.io/)                                                  |
+| **Holoscan SDK**   | NVIDIA's platform for building high-performance streaming AI applications                                                 | [Documentation](https://docs.nvidia.com/holoscan/sdk-user-guide/introduction/getting-started)    |
 
 ## Requirements
 
@@ -85,7 +85,7 @@ The build produces the following TensorRT engine files:
 Once the Docker image is built and TensorRT engines have been generated, subsequent runs reuse them. To skip the TensorRT conversion on subsequent runs:
 
 ```sh
-./holohub run tracks2endo4d --configure-args "-DCONVERT_ENGINE=OFF"
+./holohub run tracks2endo4d --configure-args="-DCONVERT_ENGINE=OFF"
 ```
 
 ## Advanced Usage
@@ -109,7 +109,7 @@ Once your environment is set up, you can build the workflow using the following 
 To force TensorRT engine re-conversion (e.g., after switching GPUs):
 
 ```sh
-./holohub build tracks2endo4d --configure-args "-DCONVERT_ENGINE=ON"
+./holohub build tracks2endo4d --configure-args="-DCONVERT_ENGINE=ON"
 ```
 
 ### Running the Application
@@ -122,10 +122,10 @@ Run the application using the Holohub container (builds if needed):
 ./holohub run tracks2endo4d
 ```
 
-To skip the build step:
+To reuse both an existing container image and existing application artifacts:
 
 ```sh
-./holohub run tracks2endo4d --no-build
+./holohub run tracks2endo4d --no-docker-build --no-local-build
 ```
 
 #### From Inside the Container
@@ -154,7 +154,7 @@ This application supports the following CMake options that can be passed via `--
 Example usage:
 
 ```sh
-./holohub build tracks2endo4d --configure-args "-DCONVERT_ENGINE=OFF"
+./holohub build tracks2endo4d --configure-args="-DCONVERT_ENGINE=OFF"
 ```
 
 ### Command Line Arguments

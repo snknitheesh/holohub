@@ -41,19 +41,25 @@ For detailed information, refer to:
 All dependencies are automatically managed by the Holohub Docker container. You can simply run:
 
 ```bash
-./holohub run-container --extra-script benchmarking [<application_name>]
+./holohub run-container <application_name> --extra-scripts benchmarking
 ```
 
 > [!NOTE]
-> This command sets up the benchmarking environment on top of the default Holohub container image, unless you specify an application with a custom Dockerfile. In that case, the benchmarking environment attempts to extend the application's Dockerfile. However, this process hasn't been fully tested for every possible custom Dockerfile, and success depends on how the Dockerfile is authored. Some Dockerfiles may already include the required benchmarking support and may work even without the `--extra-script benchmarking` option; in other cases, there may be conflicts or additional manual steps needed. Always refer to the relevant application's README for any application-specific benchmarking instructions or compatibility considerations.
+> This command sets up the benchmarking environment on top of the default Holohub container image, unless you specify an application with a custom Dockerfile. In that case, the benchmarking environment attempts to extend the application's Dockerfile. However, this process hasn't been fully tested for every possible custom Dockerfile, and success depends on how the Dockerfile is authored. Some Dockerfiles may already include the required benchmarking support and may work even without the `--extra-scripts benchmarking` option; in other cases, there may be conflicts or additional manual steps needed. Always refer to the relevant application's README for any application-specific benchmarking instructions or compatibility considerations.
 
 ### Bare-metal Installation
 
 If not using the Holohub Docker container, apart from the holoscan and application's specific dependencies, additional Python packages should be installed:
 
 ```bash
+pip install holoscan-cli
 pip install -r benchmarks/holoscan_flow_benchmarking/requirements.txt
 ```
+
+`holoscan-cli` provides the project metadata APIs that `benchmark.py` uses to
+resolve applications and modes; see
+[holoscan-cli](https://github.com/nvidia-holoscan/holoscan-cli) for pinning or
+pre-release specs.
 
 These python dependencies include:
 

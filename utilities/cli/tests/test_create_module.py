@@ -6,7 +6,7 @@
 Each test:
   1. Runs `./holohub create` in a temporary directory (non-interactively).
   2. Inspects the generated directory structure.
-  3. Runs `./holohub list` with HOLOHUB_SEARCH_PATH pointing at the generated
+  3. Runs `./holohub list` with HOLOSCAN_CLI_SEARCH_PATH pointing at the generated
      module's applications/ directory and asserts the scaffolded application
      appears in stdout.
 
@@ -42,6 +42,7 @@ def _run(
         text=True,
         cwd=str(cwd),
         env=env or os.environ.copy(),
+        check=False,
     )
 
 
@@ -69,7 +70,7 @@ class TestCreateModule(unittest.TestCase):
         )
 
     def _list_with_search_path(self, search_path: Path) -> subprocess.CompletedProcess:
-        env = {**os.environ, "HOLOHUB_SEARCH_PATH": str(search_path)}
+        env = {**os.environ, "HOLOSCAN_CLI_SEARCH_PATH": str(search_path)}
         return _run([str(HOLOHUB_SCRIPT), "list"], env=env)
 
     # ------------------------------------------------------------------
@@ -107,7 +108,7 @@ class TestCreateModule(unittest.TestCase):
                 Path("README.md"),
                 Path("DEVELOPER.md"),
                 Path(f"operators/{operator_slug}/{operator_slug}.py"),
-                Path(f"applications/{app_name}/metadata.json"),
+                Path(f"applications/{app_name}/python/metadata.json"),
                 Path("python") / "holoscan" / module_slug / "__init__.py",
             ]
             for rel in expected_paths:
@@ -178,8 +179,9 @@ class TestCreateModule(unittest.TestCase):
                 Path(f"operators/{operator_slug}/{operator_slug}.cpp"),
                 Path(f"operators/{operator_slug}/{operator_slug}.hpp"),
                 Path(f"operators/{operator_slug}/python/_{operator_slug}_bindings.cpp"),
-                Path(f"applications/{app_name}/metadata.json"),
-                Path(f"applications/{app_name}/{app_name}.cpp"),
+                Path(f"applications/{app_name}/python/metadata.json"),
+                Path(f"applications/{app_name}/cpp/metadata.json"),
+                Path(f"applications/{app_name}/cpp/{app_name}.cpp"),
                 Path("tests/cpp/test_operators.cpp"),
                 Path(".clang-format"),
                 Path("python") / "holoscan" / module_slug / "__init__.py",

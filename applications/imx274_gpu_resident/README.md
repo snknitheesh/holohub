@@ -1,7 +1,7 @@
 # IMX274 GPU-Resident Application
 
 This application demonstrates an end-to-end example of a [GPU-resident Holoscan
-SDK application](https://docs.nvidia.com/holoscan/sdk-user-guide/gpu_resident.html). It leverages Holoscan Sensor Bridge (HSB) to visualize IMX274
+SDK application](https://docs.nvidia.com/holoscan/sdk-user-guide/using-the-sdk/gpu-resident-execution). It leverages Holoscan Sensor Bridge (HSB) to visualize IMX274
 camera stream to a connected monitor (G-SYNC enabled monitor is recommended).
 With the help of GPU-resident execution, CPU is kept out of the fast and
 latency-critical camera to display path, and the application achieves ultra-low
@@ -215,7 +215,7 @@ Artifacts are produced under `./build/<operator_name>/` (e.g. `./build/csi_to_ba
 ##### Build Options
 
 - **Debug build**: `./holohub build <operator_name> --build-type debug`
-- **Extra CMake options**: `./holohub build <operator_name> --configure-args '-DCMAKE_VERBOSE_MAKEFILE=ON'`
+- **Extra CMake options**: `./holohub build <operator_name> --configure-args='-DCMAKE_VERBOSE_MAKEFILE=ON'`
 
 Run `./holohub build --help` for more options.
 

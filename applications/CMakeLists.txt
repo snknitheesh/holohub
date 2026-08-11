@@ -14,8 +14,15 @@
 # limitations under the License.
 
 # Make sure to order by alphabetical list
-add_holohub_application(adv_networking_bench DEPENDS
-                        OPERATORS advanced_network)
+add_holohub_application(ai_surgical_video DEPENDS
+                        OPERATORS orsi_format_converter
+                                  orsi_segmentation_preprocessor
+                        OPTIONAL  aja_source
+                                  csi_to_bayer
+                                  image_processor
+                                  image_shift_to_uint8
+                                  roce_receiver
+                        )
 
 add_holohub_application(aja_video_capture DEPENDS
                         OPERATORS aja_source)
@@ -26,9 +33,6 @@ add_holohub_application(atracsys_visualizer DEPENDS
                         OPERATORS atracsys_mode_switcher
                         OPTIONAL  atracsys_camera)
 
-add_holohub_application(basic_networking_ping DEPENDS
-                        OPERATORS basic_network)
-
 add_holohub_application(bci_visualization DEPENDS
                         OPERATORS volume_renderer)
 
@@ -38,6 +42,10 @@ add_holohub_application(body_pose_estimation DEPENDS
 add_holohub_application(colonoscopy_segmentation DEPENDS OPERATORS OPTIONAL aja_source)
 
 add_holohub_application(cvcuda_basic DEPENDS OPERATORS cvcuda_holoscan_interop)
+
+add_holohub_application(daqiri_raw_ethernet_bench)
+
+add_holohub_application(daqiri_socket_ping)
 
 add_subdirectory(dds)
 
@@ -50,6 +58,8 @@ add_holohub_application(deltacast_receiver DEPENDS
                         )
 
 add_holohub_application(depth_anything_v2)
+
+add_holohub_application(depth_to_point_cloud_demo DEPENDS OPERATORS depth_to_point_cloud)
 
 add_subdirectory(distributed)
 
@@ -115,8 +125,7 @@ add_holohub_application(multiai_ultrasound DEPENDS
 add_subdirectory(nvidia_video_codec)
 
 add_holohub_application(simple_radar_pipeline)
-add_holohub_application(simple_pdw_pipeline DEPENDS
-                        OPERATORS basic_network)
+add_holohub_application(simple_pdw_pipeline)
 
 add_holohub_application(object_detection_torch DEPENDS
                         OPERATORS OPTIONAL aja_source)
@@ -126,6 +135,9 @@ add_holohub_application(openigtlink_3dslicer DEPENDS OPERATORS openigtlink)
 add_holohub_application(pipeline_visualization)
 
 add_holohub_application(polyp_detection)
+
+add_holohub_application(procedural_narrator DEPENDS
+                        OPERATORS online_video_reasoner)
 
 add_holohub_application(pva_video_filter)
 add_holohub_application(pva_radar_pipeline DEPENDS OPERATORS pva_radar pva_radar_graphics raw_radar_cube_source)
@@ -147,13 +159,10 @@ add_holohub_application(tak)
 
 add_holohub_application(tao_peoplenet)
 
-add_holohub_application(network_radar_pipeline DEPENDS
-                        OPERATORS basic_network
-                                  advanced_network)
+add_holohub_application(network_radar_pipeline)
 
 add_holohub_application(psd_pipeline DEPENDS
-                        OPERATORS advanced_network
-                                  fft
+                        OPERATORS fft
                                   high_rate_psd
                                   low_rate_psd
                                   vita49_psd_packetizer
@@ -163,9 +172,7 @@ add_holohub_application(ultrasound_segmentation DEPENDS
                         OPERATORS OPTIONAL aja_source)
 
 add_holohub_application(velodyne_lidar_app DEPENDS
-                        OPERATORS velodyne_lidar
-                                  basic_network
-                                  )
+                        OPERATORS velodyne_lidar)
 
 add_holohub_application(volume_rendering DEPENDS
                         OPERATORS volume_loader

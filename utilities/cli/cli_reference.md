@@ -1,5 +1,13 @@
 # HoloHub CLI Reference Guide
 
+> ⚠️ **Wrapper reference.** This file documents HoloHub's `./holohub`
+> wrapper usage around the standalone `holoscan-cli` package. For the
+> accepted command syntax, run `./holohub --help` or
+> `./holohub <command> --help`; use `./holohub env-info` to inspect the
+> effective runtime environment. The implementation lives in the
+> [holoscan-cli](https://github.com/nvidia-holoscan/holoscan-cli)
+> repository.
+
 Quick reference for the HoloHub CLI (`./holohub`). For a high-level overview see the [README](README.md). For implementation details and extension guide see the [CLI Developer Guide](cli_dev_guide.md).
 
 ---
@@ -15,8 +23,8 @@ Run the CLI from the repository root:
 **Getting help:**
 
 ```bash
-./holohub -h | --help                    # List all commands
-./holohub <command> -h | --help          # Options for a specific command
+./holohub --help                         # List all commands
+./holohub <command> --help               # Options for a specific command
 ./holohub run myapp --verbose --dryrun   # Debug: print without executing
 ./holohub list                           # List available projects
 ```
@@ -34,12 +42,12 @@ Run the CLI from the repository root:
 
 | Command                                     | Description                                                                |
 | ------------------------------------------- | -------------------------------------------------------------------------- |
-| [create](#create)                           | Create a new Holoscan application from a template                          |
+| [create](#create)                           | Create an application or external module from a template                   |
 | [build-container](#build-container)         | Build the development container image                                      |
 | [run-container](#run-container)             | Build and launch the development container                                 |
 | [build](#build)                             | Build a project (container or local)                                       |
 | [run](#run)                                 | Build and run a project (container or local)                               |
-| [list](#list)                               | List all available targets (applications, workflows, operators, and so on) |
+| [list](#list)                               | List all available targets (applications, operators, and so on)            |
 | [modes](#modes)                             | List available modes for an application                                    |
 | [lint](#lint)                               | Run linting tools                                                          |
 | [setup](#setup)                             | Install HoloHub recommended packages for development                       |
@@ -47,8 +55,10 @@ Run the CLI from the repository root:
 | [env-info](#env-info)                       | Display environment debugging information                                  |
 | [env-check](#env-check)                     | Run system health checks (GPU, CUDA, Docker, SDK, disk, display, devices)  |
 | [install](#install)                         | Install a built project                                                    |
+| [package](#package)                         | Build Holoscan Module distribution artifacts                               |
 | [test](#test)                               | Run tests for a project                                                    |
 | [clear-cache](#clear-cache)                 | Clear cache folders (build, data, install)                                 |
+| [version](#version)                         | Display the installed holoscan-cli package version                         |
 | [autocompletion_list](#autocompletion-list) | List targets for autocompletion (used internally)                          |
 
 ---
@@ -57,23 +67,55 @@ Run the CLI from the repository root:
 
 Many commands inherit **container build** and/or **container run** options. They are listed here once; see each command section for applicability.
 
+### Preview Support
+
+Preview mutating commands with the flags they actually support:
+
+| Commands | Preview flags |
+| --- | --- |
+| `build`, `run`, `build-container`, `run-container`, `install`, `test`, `package` | `--dryrun --verbose` |
+| `create`, `lint`, `setup`, `clear-cache` | `--dryrun` |
+| `list`, `modes`, `env-info`, `env-check`, `status`, `version` | Read-only; no preview flags |
+
+### JSON Output
+
+These read-only commands accept `--json` and print a machine-readable
+document instead of the prose rendering:
+
+| Command | Top-level fields (schematic) | Description |
+| --- | --- | --- |
+| `list` | `schema_version`; `projects[]`: `name`, `project_type`, `source_folder`, `language[]`, `modes[]` | Discovered project inventory, including source locations and supported languages and modes. |
+| `modes` | `schema_version`, `project`, `language[]`, and the resolved `modes{}` object | Mode definitions for one selected project and language implementation. |
+| `env-info` | `schema_version`, `cli`, `system`, `python`, `source_project`, `git`, `docker`, `cuda_gpu`, `sccache`, `environment_variables` | Host, tool, source-project, and configured-environment details for diagnostics. |
+| `env-check` | `schema_version`, `elapsed_seconds`, `checks[]`, `summary` | Environment check results, timing, and aggregate pass, warning, failure, and skip counts. |
+| `status` | `schema_version`, `platform`, `git`, `images[]`, `builds[]`, `build_folders[]`, `data_folders[]` | Repository, container-image, build, and data status for the current source project. |
+| `version` | `schema_version`, `package`, `version`, `executable`, `module` | Installed package version and the Python executable and module selected by the wrapper. |
+
+`--json` replaces the prose output rather than supplementing it, so the
+document can be piped straight into a parser. `list --json` also reports
+`source_folder`, which locates a project on disk and is not available in the
+prose listing. Every payload currently reports `schema_version` as `1`; fields
+may be added within schema version 1, but existing fields are not removed or
+renamed.
+
 ### Container Build Options
 
-Used by: `build-container`, `run-container`, `build`, `run`, `install`, `test`.
+Used by: `build-container`, `run-container`, `build`, `run`, `install`,
+`test`, and `package`.
 
-| Option                   | Description                                                                                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--base-img`             | Fully qualified base image name for the container build                                                                                          |
-| `--docker-file`          | Path to Dockerfile to use                                                                                                                        |
-| `--img`                  | Fully qualified output container image name                                                                                                      |
-| `--no-cache`             | Do not use cache when building the image                                                                                                         |
-| `--cuda <version>`       | CUDA major version (for example `12`, `13`). Default: `12`                                                                                       |
-| `--build-args`           | Extra arguments to `docker build` (for example `--build-args '--network=host'`)                                                                  |
-| `--extra-scripts <name>` | Run named setup scripts as Docker layers (search in `HOLOHUB_SETUP_SCRIPTS_DIR`). Can be repeated. Use `./holohub setup --list-scripts` to list. |
+| Option                   | Description                                                                                                                                           |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--base-img`             | Fully qualified base image name for the container build                                                                                               |
+| `--docker-file`          | Path to Dockerfile to use                                                                                                                             |
+| `--img`                  | Fully qualified output container image name                                                                                                           |
+| `--no-cache`             | Do not use cache when building the image                                                                                                              |
+| `--cuda <version>`       | Override the CUDA major version (for example `12`, `13`). If omitted, select it from the driver, falling back to `13` when detection is unavailable.  |
+| `--build-args`           | Extra arguments to `docker build` (for example `--build-args='--network=host'`)                                                                       |
+| `--extra-scripts <name>` | Run named setup scripts as Docker layers (search in `HOLOSCAN_CLI_SETUP_SCRIPTS_DIR`). Can be repeated. Use `./holohub setup --list-scripts` to list. |
 
 ### Container Run Options
 
-Used by: `run-container`, `build`, `run`, `install`.
+Used by: `run-container`, `build`, `run`, `install`, and `package`.
 
 | Option                    | Description                                                                   |
 | ------------------------- | ----------------------------------------------------------------------------- |
@@ -84,10 +126,14 @@ Used by: `run-container`, `build`, `run`, `install`.
 | `--init`                  | Use tini entry point                                                          |
 | `--persistent`            | Do not delete container after it exits                                        |
 | `--add-volume <path>`     | Mount path at `/workspace/volumes`. Can be repeated                           |
-| `--as-root`               | Run container as root                                                         |
+| `--as-root`               | `run`: app as root; other listed commands: container as root                  |
 | `--nsys-location <path>`  | Nsight Systems installation path on host                                      |
 | `--mps`                   | Mount CUDA MPS host directories into container (if MPS enabled on host)       |
 | `--enable-x11`            | Deprecated; X11/Wayland forwarding is auto-detected                           |
+
+With `run`, the build phase remains under the invoking user and only the
+application runs as root. With `run-container`, `build`, `install`, and
+`package`, `--as-root` launches the development container as root.
 
 ---
 
@@ -95,7 +141,8 @@ Used by: `run-container`, `build`, `run`, `install`.
 
 ### Create
 
-Create a new Holoscan-based application from a template (for example, cookiecutter).
+Create a HoloHub application or external Holoscan Module from a cookiecutter
+template.
 
 **Usage:**
 
@@ -114,8 +161,8 @@ Create a new Holoscan-based application from a template (for example, cookiecutt
 | Option                | Default                                  | Description                                 |
 | --------------------- | ---------------------------------------- | ------------------------------------------- |
 | `--template <path>`   | `applications/template`                  | Path to template directory                  |
-| `--language`          | `python` (if both implementations exist) | `cpp` or `python`                           |
-| `--directory <path>`  | `applications`                           | Directory to create the project in          |
+| `--language`          | `cpp`                                    | `cpp` or `python`                           |
+| `--directory <path>`  | `applications`                           | Module templates prompt when omitted        |
 | `--context key=value` | —                                        | Cookiecutter context; can be repeated       |
 | `-i`, `--interactive` | true                                     | Interactive mode; use `-i False` to disable |
 | `--dryrun`            | —                                        | Print commands without executing            |
@@ -247,7 +294,7 @@ Build a project. By default builds inside the container; use `--local` to build 
 | `--parallel <n>`         | Number of parallel build jobs                                                       |
 | `--pkg-generator`        | `DEB` (default) or other cpack generator                                            |
 | `--language`             | `cpp` or `python`                                                                   |
-| `--benchmark`            | Build for Holoscan Flow Benchmarking (applications/workflows only)                  |
+| `--benchmark`            | Build for Holoscan Flow Benchmarking (applications and benchmarks)                  |
 | `--no-docker-build`      | Skip building the container                                                         |
 | `--verbose`              | Extra output                                                                        |
 | `--dryrun`               | Print commands without executing                                                    |
@@ -301,6 +348,7 @@ Build and run a project. By default: build container (if needed), build app in c
 ```bash
 ./holohub run myapp --language cpp
 ./holohub run myapp --local --language cpp --build-type debug
+./holohub run hardware_app --local --as-root
 ./holohub run myapp --language cpp --run-args="--config=config.json"
 ./holohub run body_pose_estimation replayer
 ./holohub run holochat standalone
@@ -310,15 +358,26 @@ Build and run a project. By default: build container (if needed), build app in c
 
 ### List
 
-List all available targets (applications, workflows, operators, packages, and so on).
+List all available targets (applications, operators, packages, and so on).
 
 **Usage:**
 
 ```bash
-./holohub list
+./holohub list [options]
 ```
 
-No arguments or options.
+**Options:**
+
+| Option   | Description                                                       |
+| -------- | ----------------------------------------------------------------- |
+| `--json` | Output the project list as JSON (see [JSON Output](#json-output)) |
+
+**Examples:**
+
+```bash
+./holohub list          # Human-readable listing, grouped by project type
+./holohub list --json   # Machine-readable JSON, including each source_folder
+```
 
 ---
 
@@ -340,14 +399,16 @@ List available modes for an application (from `metadata.json`).
 
 **Options:**
 
-| Option       | Description       |
-| ------------ | ----------------- |
-| `--language` | `cpp` or `python` |
+| Option       | Description                                                |
+| ------------ | ---------------------------------------------------------- |
+| `--language` | `cpp` or `python`                                          |
+| `--json`     | Output the modes as JSON (see [JSON Output](#json-output)) |
 
 **Examples:**
 
 ```bash
 ./holohub modes body_pose_estimation
+./holohub modes body_pose_estimation --json
 ```
 
 ---
@@ -417,7 +478,7 @@ Install HoloHub recommended packages and run setup scripts (for example for Holo
 
 | Option             | Description                                                                 |
 | ------------------ | --------------------------------------------------------------------------- |
-| `--list-scripts`   | List available scripts in `HOLOHUB_SETUP_SCRIPTS_DIR`                       |
+| `--list-scripts`   | List available scripts in `HOLOSCAN_CLI_SETUP_SCRIPTS_DIR`                  |
 | `--scripts <name>` | Run named script(s); can be repeated. Omit to run default recommended setup |
 | `--dryrun`         | Print commands without executing                                            |
 
@@ -443,9 +504,9 @@ Show a compact overview of the development environment: platform, git state, con
 
 **Options:**
 
-| Option   | Description            |
-| -------- | ---------------------- |
-| `--json` | Output status as JSON  |
+| Option   | Description                                             |
+| -------- | ------------------------------------------------------- |
+| `--json` | Output status as JSON (see [JSON Output](#json-output)) |
 
 **Examples:**
 
@@ -472,10 +533,21 @@ Print environment and path information for debugging.
 **Usage:**
 
 ```bash
-./holohub env-info
+./holohub env-info [options]
 ```
 
-No arguments or options.
+**Options:**
+
+| Option   | Description                                                           |
+| -------- | --------------------------------------------------------------------- |
+| `--json` | Output the full host report as JSON (see [JSON Output](#json-output)) |
+
+**Examples:**
+
+```bash
+./holohub env-info
+./holohub env-info --json
+```
 
 ---
 
@@ -503,9 +575,9 @@ Run quick system checks for GPU, CUDA, Docker, Holoscan SDK, disk, display, devi
 
 **Options:**
 
-| Option   | Description                                                 |
-| -------- | ----------------------------------------------------------- |
-| `--json` | Output results as machine-readable JSON (for CI pipelines)  |
+| Option   | Description                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------- |
+| `--json` | Output results as machine-readable JSON, for CI pipelines (see [JSON Output](#json-output)) |
 
 **Exit code:** `0` when there are no failures, `1` if any check fails.
 
@@ -530,14 +602,14 @@ Build and install a project (container or local). Installs built artifacts (for 
 **Usage:**
 
 ```bash
-./holohub install <project> [mode] [options]
+./holohub install [project] [mode] [options]
 ```
 
 **Arguments:**
 
 | Argument  | Description                          |
 | --------- | ------------------------------------ |
-| `project` | Project to install                   |
+| `project` | Project; optional with `--dev`       |
 | `mode`    | (Optional) Mode from `metadata.json` |
 
 **Options:** All [container build](#container-build-options) and [container run](#container-run-options) options, plus:
@@ -545,6 +617,9 @@ Build and install a project (container or local). Installs built artifacts (for 
 | Option                   | Description                             |
 | ------------------------ | --------------------------------------- |
 | `--local`                | Install locally instead of in container |
+| `--dev`                  | Install staged module development hooks |
+| `--uninstall`            | Remove installed development hooks      |
+| `--build-dir <path>`     | Select staged-hook build directory      |
 | `--build-type`           | `debug`, `release`, or `rel-debug`      |
 | `--build-with <list>`    | Semicolon-separated operators           |
 | `--configure-args <arg>` | Extra CMake options; can be repeated    |
@@ -559,6 +634,43 @@ Build and install a project (container or local). Installs built artifacts (for 
 ```bash
 ./holohub install myapp
 ./holohub install myapp --local --build-type release
+./holohub install --dev --build-dir build/my_module
+```
+
+---
+
+### Package
+
+Build Holoscan Module distribution artifacts. This command packages modules
+as DEB and/or Python wheel artifacts; it is not the legacy HAP/MAP application
+packager retired in holoscan-cli 4.3.0.
+
+**Usage:**
+
+```bash
+./holohub package [project] [options]
+```
+
+When `project` is omitted, the command reads module metadata from
+`./metadata.json` in the current directory.
+
+**Options:** All [container build](#container-build-options) and
+[container run](#container-run-options) options, plus:
+
+| Option | Description |
+| --- | --- |
+| `--local` | Package locally instead of in a container |
+| `--build-type` | `debug`, `release`, or `rel-debug` |
+| `--pkg-generator <list>` | Comma-separated generators such as `DEB,WHEEL` |
+| `--language` | `cpp` or `python` |
+| `--no-docker-build` | Reuse an existing container image |
+| `--verbose` | Print additional build details |
+| `--dryrun` | Print commands without executing them |
+
+**Example:**
+
+```bash
+./holohub package holoscan-my-sensor --pkg-generator DEB,WHEEL
 ```
 
 ---
@@ -586,7 +698,7 @@ Run tests for a project (for example CTest in container or locally).
 | `--local`                                       | Test locally instead of in container                            |
 | `--coverage`                                    | Enable code coverage (adds coverage flags, runs ctest_coverage) |
 | `--language`                                    | `cpp` or `python`                                               |
-| `--clear-cache`                                 | Clear cache before running                                      |
+| `--clear-cache`                                 | Clear build and install caches before running                   |
 | `--ctest-script <path>`                         | CTest script to use                                             |
 | `--cmake-options <opt>`                         | CMake options; can be repeated                                  |
 | `--ctest-options <opt>`                         | CTest options; can be repeated                                  |
@@ -627,12 +739,37 @@ Clear cache directories (build, data, install).
 | `--dryrun`  | Print commands without executing |
 
 If none of `--build`, `--data`, `--install` are given, all are cleared. Use `--dryrun` to preview what would be deleted.
+The command refuses to remove `/`, the user's home directory, the repository
+root, their ancestors, or candidates outside the configured cache roots.
 
 **Examples:**
 
 ```bash
 ./holohub clear-cache
 ./holohub clear-cache --build
+```
+
+---
+
+### Version
+
+Display the installed `holoscan-cli` package version selected by the wrapper.
+
+```bash
+./holohub version [options]
+```
+
+**Options:**
+
+| Option   | Description                                                         |
+| -------- | ------------------------------------------------------------------- |
+| `--json` | Output the version fields as JSON (see [JSON Output](#json-output)) |
+
+**Examples:**
+
+```bash
+./holohub version
+./holohub version --json
 ```
 
 ---
@@ -691,7 +828,7 @@ Each mode is defined under the `modes` key in `metadata.json`:
 
 ```json
 {
-  "metadata": {
+  "application": {
     "default_mode": "mode_name",
     "modes": {
       "mode_name": { }
@@ -734,7 +871,7 @@ Each mode is defined under the `modes` key in `metadata.json`:
 
 ```json
 {
-  "metadata": {
+  "application": {
     "default_mode": "standard",
     "modes": {
       "standard": {
@@ -778,7 +915,7 @@ Each mode is defined under the `modes` key in `metadata.json`:
 - **`--no-docker-build`:** use an existing container image (skip image build).
 - **`--no-local-build`:** (`run` only) skip app build and run existing binaries/artifacts.
 
-Environment variable `HOLOHUB_BUILD_LOCAL` forces local mode (same as `--local`).
+Environment variable `HOLOSCAN_CLI_BUILD_LOCAL` forces local mode (same as `--local`).
 
 **Default behavior of `./holohub run`:**
 
@@ -794,52 +931,70 @@ Dedicated commands (`build`, `run`, `build-container`, `run-container`) allow cl
 
 The CLI respects these variables. Defaults and behavior are summarized below.
 
+### Wrapper Bootstrap
+
+These variables are consumed by `./holohub` before it delegates to
+`holoscan-cli`. See [How the wrapper resolves the CLI](README.md#how-the-wrapper-resolves-the-cli)
+for selection order, safety boundaries, and managed-venv maintenance.
+
+| Variable | Default / purpose |
+| --- | --- |
+| `HOLOSCAN_CLI_PYTHON_BIN` | Explicit caller-owned interpreter; highest precedence. |
+| `VIRTUAL_ENV` | Uses the active environment's `bin/python` when no explicit interpreter is set. |
+| `HOLOSCAN_CLI_VENV` | Wrapper-managed environment; defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/holoscan-cli/venv`. |
+| `HOLOSCAN_CLI_SOURCE` | Local holoscan-cli checkout used in preference to a package requirement. |
+| `HOLOSCAN_CLI_INSTALL_ARGS` | Whitespace-separated pip options and requirements. HoloHub defaults to the NVIDIA pre-release index; the wrapper also applies its exact committed pin. Shell quotes are not parsed. |
+| `HOLOSCAN_CLI_PINNED_VERSION` | One exact package version to install and verify. An explicitly empty value means floating. Ignored with `HOLOSCAN_CLI_SOURCE`. |
+| `PIP_BREAK_SYSTEM_PACKAGES` | PEP 668 pip control only; defaults to `1` after root system scope is selected and never selects that scope. |
+
 ### Build and Execution
 
-| Variable                 | Purpose                                                                                                          |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `HOLOHUB_BUILD_LOCAL`    | Force local mode (like `--local`); skips container build steps and runs on the host directly                     |
-| `HOLOHUB_ALWAYS_BUILD`   | Defaults to `true`. Set to `false` to allow skipping builds with `--no-local-build` / `--no-docker-build`        |
-| `HOLOHUB_ENABLE_SCCACHE` | Defaults to `false`. Set to `true` to enable sccache for builds; use with `--extra-scripts sccache` in container |
+| Variable                      | Purpose                                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `HOLOSCAN_CLI_BUILD_LOCAL`    | Force local execution (like `--local`); containers set it during CLI re-entry                                    |
+| `HOLOSCAN_CLI_ALWAYS_BUILD`   | Defaults to `true`; `false` skips both run builds, but only image builds for other container commands            |
+| `HOLOSCAN_CLI_ENABLE_SCCACHE` | Defaults to `false`. Set to `true` to enable sccache for builds; use with `--extra-scripts sccache` in container |
 
 ### Paths and Directories
 
-| Variable                    | Default / purpose                                                                    |
-| --------------------------- | ------------------------------------------------------------------------------------ |
-| `HOLOHUB_ROOT`              | HoloHub repo root                                                                    |
-| `HOLOHUB_BUILD_PARENT_DIR`  | `<HOLOHUB_ROOT>/build`                                                               |
-| `HOLOHUB_DATA_DIR`          | `<HOLOHUB_ROOT>/data`                                                                |
-| `HOLOHUB_SETUP_SCRIPTS_DIR` | `<HOLOHUB_ROOT>/utilities/setup`                                                     |
-| `HOLOHUB_PATH_PREFIX`       | `holohub_` (prefix for path placeholders in metadata)                                |
-| `HOLOHUB_DEFAULT_HSDK_DIR`  | `/opt/nvidia/holoscan`                                                               |
-| `HOLOSCAN_SDK_ROOT`         | Local Holoscan SDK path (for mounting into containers)                               |
-| `HOLOHUB_SEARCH_PATH`       | Comma-separated dirs to scan for metadata (for example `applications,workflows,...`) |
+| Variable                         | Default / purpose                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------------ |
+| `HOLOSCAN_CLI_ROOT`              | HoloHub repo root                                                                    |
+| `HOLOSCAN_CLI_BUILD_PARENT_DIR`  | `<HOLOSCAN_CLI_ROOT>/build`                                                          |
+| `HOLOSCAN_CLI_DATA_DIR`          | `<HOLOSCAN_CLI_ROOT>/data`                                                           |
+| `HOLOSCAN_CLI_SETUP_SCRIPTS_DIR` | `<HOLOSCAN_CLI_ROOT>/utilities/setup`                                                |
+| `HOLOSCAN_CLI_PATH_PREFIX`       | `holohub_` (prefix for path placeholders in metadata)                                |
+| `HOLOSCAN_CLI_DEFAULT_HSDK_DIR`  | `/opt/nvidia/holoscan`                                                               |
+| `HOLOSCAN_SDK_ROOT`              | Local Holoscan SDK path (for mounting into containers)                               |
+| `HOLOSCAN_CLI_SEARCH_PATH`       | Comma-separated dirs to scan for metadata (for example `applications,operators,...`) |
 
 ### Container and Docker
 
-| Variable                                                                      | Default / purpose                                       |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `HOLOHUB_REPO_PREFIX`                                                         | `holohub`; base for naming                              |
-| `HOLOHUB_CONTAINER_PREFIX`                                                    | Same as repo prefix; container name prefix              |
-| `HOLOHUB_WORKSPACE_NAME`                                                      | Workspace dir name in container                         |
-| `HOLOHUB_HOSTNAME_PREFIX`                                                     | Container hostname prefix (for example for VSCode)      |
-| `HOLOHUB_DOCKER_EXE`                                                          | `docker`                                                |
-| `HOLOHUB_BASE_IMAGE`, `HOLOHUB_BASE_SDK_VERSION`, `HOLOHUB_BASE_IMAGE_FORMAT` | Base image for Dockerfiles                              |
-| `HOLOHUB_DEFAULT_IMAGE_FORMAT`                                                | Default output image tag format                         |
-| `HOLOHUB_DEFAULT_DOCKER_BUILD_ARGS`                                           | Extra default args for `docker build`                   |
-| `HOLOHUB_DEFAULT_DOCKER_RUN_ARGS`                                             | Extra default args for `docker run`                     |
-| `HOLOHUB_DEFAULT_DOCKERFILE`                                                  | Default Dockerfile path                                 |
-| `HOLOHUB_BENCHMARKING_SUBDIR`                                                 | Benchmarking subdir (for example for flow benchmarking) |
+| Variable                                                                                     | Default / purpose                                       |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `HOLOSCAN_CLI_REPO_PREFIX`                                                                   | `holohub`; base for naming                              |
+| `HOLOSCAN_CLI_CONTAINER_PREFIX`                                                              | Same as repo prefix; container name prefix              |
+| `HOLOSCAN_CLI_WORKSPACE_NAME`                                                                | Workspace dir name in container                         |
+| `HOLOSCAN_CLI_HOSTNAME_PREFIX`                                                               | Container hostname prefix (for example for VSCode)      |
+| `HOLOSCAN_CLI_DOCKER_EXE`                                                                    | `docker`                                                |
+| `HOLOSCAN_CLI_BASE_IMAGE`, `HOLOSCAN_CLI_BASE_SDK_VERSION`, `HOLOSCAN_CLI_BASE_IMAGE_FORMAT` | Base image for Dockerfiles                              |
+| `HOLOSCAN_CLI_DEFAULT_IMAGE_FORMAT`                                                          | Default output image tag format                         |
+| `HOLOSCAN_CLI_DEFAULT_DOCKER_BUILD_ARGS`                                                     | Extra default args for `docker build`                   |
+| `HOLOSCAN_CLI_DEFAULT_DOCKER_RUN_ARGS`                                                       | Extra default args for `docker run`                     |
+| `HOLOSCAN_CLI_DEFAULT_DOCKERFILE`                                                            | Default Dockerfile path                                 |
+| `HOLOSCAN_CLI_BENCHMARKING_SUBDIR`                                                           | Benchmarking subdir (for example for flow benchmarking) |
 
 ### Other
 
 | Variable                     | Purpose                                           |
 | ---------------------------- | ------------------------------------------------- |
-| `HOLOHUB_CTEST_SCRIPT`       | CTest script used by `./holohub test`             |
-| `HOLOHUB_CMD_NAME`           | Command name in help (default: `./holohub`)       |
-| `HOLOHUB_CLI_DOCS_URL`       | URL for CLI docs (for example for external forks) |
+| `HOLOSCAN_CLI_CTEST_SCRIPT`  | CTest script used by `./holohub test`             |
+| `HOLOSCAN_CLI_CMD_NAME`      | Command name in help (default: `./holohub`)       |
 | `CMAKE_BUILD_TYPE`           | Default CMake build type when not set on CLI      |
 | `CMAKE_BUILD_PARALLEL_LEVEL` | Default parallel build jobs                       |
+
+`HOLOSCAN_CLI_IN_CONTAINER_CMD` selects the command used when container
+workflows recurse into the CLI; HoloHub sets it to the mounted wrapper.
 
 ---
 
@@ -847,7 +1002,8 @@ The CLI respects these variables. Defaults and behavior are summarized below.
 
 ### Bash Autocompletion
 
-Autocompletion is usually installed during `./holohub setup`. It completes project names and command names.
+`./holohub setup` installs the repository's Bash completion script when
+`/etc/bash_completion.d` is available. You can also install it manually.
 
 ```bash
 ./holohub <TAB><TAB>       # List commands
@@ -873,5 +1029,6 @@ source ~/.bashrc
   `./holohub run-container -- './holohub lint && ./holohub build myapp'`.
   Avoid multi-line strings after `--`; use semicolons instead.
 - All CLI options use **hyphens** (`-`), not underscores (for example `--base-img`, not `--base_img`).
-- `sudo ./holohub` may not work correctly due to environment filtering (for example `PATH`).
+- Don't run the wrapper with `sudo`. Use `./holohub run <app> --as-root`: the
+  build stays user-owned and only the application phase runs as root.
 - To free disk during development: `docker image prune`, `docker buildx prune`, `docker system prune` (see [Docker docs](https://docs.docker.com/reference/cli/docker/)).

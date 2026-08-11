@@ -32,19 +32,23 @@ FROM base AS holohub-cli-prerequisites
 
 # Install python3 if not present (needed for holohub CLI)
 ARG PYTHON_VERSION=python3
-RUN if ! command -v python3 >/dev/null 2>&1; then \
+RUN if ! command -v ${PYTHON_VERSION} >/dev/null 2>&1; then \
         apt-get update \
         && apt-get install --no-install-recommends -y \
             software-properties-common curl gpg-agent \
         && add-apt-repository ppa:deadsnakes/ppa \
         && apt-get update \
         && apt-get install --no-install-recommends -y \
-            ${PYTHON_VERSION} \
+            ${PYTHON_VERSION} ${PYTHON_VERSION}-dev \
+        # Conditionally install -distutils only if available (for older python versions)
+        && (apt-cache show ${PYTHON_VERSION}-distutils >/dev/null 2>&1 && \
+            apt-get install --no-install-recommends -y ${PYTHON_VERSION}-distutils || true) \
         && apt purge -y \
             python3-pip \
             software-properties-common \
         && apt-get autoremove --purge -y \
         && rm -rf /var/lib/apt/lists/* \
+        # Register both python and python3 symlinks so all build/test tooling uses the selected version
         && update-alternatives --install /usr/bin/python python /usr/bin/${PYTHON_VERSION} 100 \
         && if [ "${PYTHON_VERSION}" != "python3" ]; then \
             update-alternatives --install /usr/bin/python3 python3 /usr/bin/${PYTHON_VERSION} 100 \
@@ -55,6 +59,11 @@ RUN if ! python3 -m pip --version >/dev/null 2>&1; then \
         curl -sS https://bootstrap.pypa.io/get-pip.py | ${PYTHON_VERSION} \
     ; fi
 
+# Install the wrapper-pinned holoscan-cli; copying only the wrapper keeps
+# this layer cached until the pin changes.
+COPY --chmod=755 holohub /tmp/scripts/
+RUN /tmp/scripts/holohub env-info
+
 # --------------------------------------------------------------------------
 #
 # Set up GStreamer-specific dependencies
@@ -62,11 +71,8 @@ RUN if ! python3 -m pip --version >/dev/null 2>&1; then \
 # --------------------------------------------------------------------------
 FROM holohub-cli-prerequisites AS holohub-cli
 
-RUN mkdir -p /tmp/scripts
-COPY holohub /tmp/scripts/
 RUN mkdir -p /tmp/scripts/utilities
 COPY utilities /tmp/scripts/utilities/
-RUN chmod +x /tmp/scripts/holohub
 RUN /tmp/scripts/holohub setup && rm -rf /var/lib/apt/lists/*
 
 # Install GStreamer development packages and pkg-config

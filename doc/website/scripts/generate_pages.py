@@ -32,13 +32,13 @@ _scripts_dir = str(Path(__file__).resolve().parent)
 if _scripts_dir not in sys.path:
     sys.path.insert(0, _scripts_dir)
 
-from generate_api_docs import get_api_reference_for_operator  # noqa: E402
+from generate_api_docs import get_api_reference_for_operator
 
 # log stuff
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-COMPONENT_TYPES = ["workflows", "applications", "operators", "tutorials", "benchmarks"]
+COMPONENT_TYPES = ["applications", "operators", "tutorials", "benchmarks"]
 
 RANKING_LEVELS = {
     0: "Level 0 - Core Stable",
@@ -125,10 +125,10 @@ def get_file_from_git(file_path: Path, git_ref: str, git_repo_path: Path) -> str
             logger.error(f"Git error: {e.stderr}")
         else:
             logger.error(f"Path {file_path} is not within the Git repository")
-        raise e
+        raise
 
 
-def create_frontmatter(metadata: dict, archive_version: str = None) -> str:
+def create_frontmatter(metadata: dict, archive_version: str | None = None) -> str:
     """Create the frontmatter for the documentation page."""
 
     # Title
@@ -141,8 +141,21 @@ def create_frontmatter(metadata: dict, archive_version: str = None) -> str:
     for tag in tags:
         tags_str += f"\n - {tag}"
 
+    # SEO description from metadata (fallback to name-based blurb)
+    description = metadata.get("description") or ""
+    description = re.sub(r"\s+", " ", str(description)).strip()
+    if not description:
+        description = (
+            f"{metadata['name']} — a Holoscan component in HoloHub, the Holoscan Ecosystem."
+        )
+    if len(description) > 160:
+        description = description[:157].rstrip() + "..."
+    # Escape for YAML double-quoted string
+    description_yaml = description.replace("\\", "\\\\").replace('"', '\\"')
+
     return f"""---
 title: "{title}"
+description: "{description_yaml}"
 tags:{tags_str}
 ---
 """
@@ -154,9 +167,9 @@ def create_run_locally_button_and_modal(
     """Create the Run Locally button (modal will be created dynamically by JavaScript).
 
     Args:
-        app_path (str): Path to the application or workflow (e.g., "applications/endoscopy_tool_tracking/python" or "workflows/ai_surgical_video/python")
-        app_name (str): Name of the application or workflow for display
-        metadata (dict): Application or workflow metadata containing language information
+        app_path (str): Path to the application (e.g., "applications/endoscopy_tool_tracking/python")
+        app_name (str): Name of the application for display
+        metadata (dict): Application metadata containing language information
         git_repo_path (Path): Path to the Git repository root
 
     Returns:
@@ -192,13 +205,13 @@ def create_run_locally_button_and_modal(
             else:
                 detected_lang = language
 
-    # Extract just the application/workflow name from the path (last meaningful part)
+    # Extract just the application name from the path (last meaningful part)
     path_parts_list = app_path.split("/")
     app_short_name = path_parts_list[-1]
     if app_short_name in ["python", "cpp"]:
         app_short_name = path_parts_list[-2] if len(path_parts_list) > 1 else path_parts_list[-1]
 
-    # Determine component type (application or workflow)
+    # Determine component type (e.g. application)
     component_type = path_parts_list[0] if len(path_parts_list) > 0 else "application"
     component_type_singular = component_type.rstrip("s")  # Remove trailing 's' to get singular form
 
@@ -331,7 +344,7 @@ def detect_all_languages(app_path: str, git_repo_path: Path) -> str:
 def create_metadata_header(
     metadata: dict,
     last_modified: str,
-    archive_version: str = None,
+    archive_version: str | None = None,
     version_selector_html: str = "",
     run_locally_html: str = "",
     alt_language_link: str = "",
@@ -433,7 +446,7 @@ def create_metadata_header(
 def _get_path_relative_to_repo(
     original_path: Path,
     git_repo_path: Path,
-    base_dir: Path = None,  # for relative paths
+    base_dir: Path | None = None,  # for relative paths
 ) -> Path | None:
     """Calculates the path relative to the git repo root.
 
@@ -596,7 +609,7 @@ def extract_markdown_header(md_txt: str) -> tuple[str, str, str] | None:
 
 
 def create_version_selector_html(
-    current_version: str, archives: dict, dest_dir: Path, latest_version: str = None
+    current_version: str, archives: dict, dest_dir: Path, latest_version: str | None = None
 ) -> tuple[str, str]:
     """Create HTML and JavaScript for version selector dropdown.
 
@@ -726,8 +739,8 @@ def create_page(
     dest_path: Path,
     last_modified: str,
     git_repo_path: Path,
-    archive: dict = {"version": None, "git_ref": "main"},
-    archives: dict = None,
+    archive: dict | None = None,
+    archives: dict | None = None,
 ):
     """Create a documentation page, handling both versioned and non-versioned cases.
 
@@ -745,6 +758,8 @@ def create_page(
     """
 
     # Frontmatter
+    if archive is None:
+        archive = {"version": None, "git_ref": "main"}
     archive_version = archive["version"] if archive and "version" in archive else None
     output_text = create_frontmatter(metadata, archive_version)
 
@@ -769,11 +784,11 @@ def create_page(
             current_version, archives, relative_dir, latest_version
         )
 
-    # Generate Run Locally button for applications and workflows (only for latest, non-archived versions)
+    # Generate Run Locally button for applications (only for latest, non-archived versions)
     run_locally_html = ""
     alt_language_link = ""
     all_languages = ""
-    if not archive_version and relative_dir.parts[0] in ["applications", "workflows"]:
+    if not archive_version and relative_dir.parts[0] == "applications":
         app_path = str(relative_dir)
         app_name = metadata.get("name", "Application")
         run_locally_html = create_run_locally_button_and_modal(
@@ -829,7 +844,7 @@ def create_title_from_readme_title(readme_title: str, suffix: str = "") -> str:
         Cleaned title with suffix appended
     """
     title = re.sub(
-        r"(Operator|Operators|Op|Application|App|Workflow)\b",
+        r"(Operator|Operators|Op|Application|App)\b",
         "",
         readme_title,
         flags=re.IGNORECASE,
@@ -860,7 +875,7 @@ def process_archived_versions(
     Returns:
         Navigation content string for archived versions
     """
-    logger.info(f"Processing versioned documentation for {str(dest_dir)}")
+    logger.info(f"Processing versioned documentation for {dest_dir!s}")
 
     nav_content = """
 nav:
@@ -958,7 +973,7 @@ def parse_metadata_path(
     with metadata_path.open("r") as metadata_file:
         metadata = json.load(metadata_file)
 
-    project_type = next((k for k in metadata.keys() if k != "$schema"), None)
+    project_type = next((k for k in metadata if k != "$schema"), None)
     if not project_type:
         logger.error(f"Skipping {metadata_rel_path}: no valid project type found (only $schema)")
         return
@@ -992,13 +1007,12 @@ def parse_metadata_path(
     # - don't track operators under application folders
     # - only track once for cpp and python
     # - don't track metadata.json in parent directories of multiple operators
-    if component_type == metadata_rel_path.parts[0]:
-        if "Operators" not in metadata["name"]:
-            components[component_type].add(language_agnostic_dir)
+    if component_type == metadata_rel_path.parts[0] and "Operators" not in metadata["name"]:
+        components[component_type].add(language_agnostic_dir)
 
     # Process the README content and extract title
     readme_text = ""
-    readme_title = metadata["name"] if "name" in metadata else metadata_path.name
+    readme_title = metadata.get("name", metadata_path.name)
 
     if readme_path.exists():
         with readme_path.open("r") as readme_file:
@@ -1025,7 +1039,7 @@ def parse_metadata_path(
     dest_path = dest_dir / "README.md"
     last_modified = get_last_modified_date(metadata_path, git_repo_path)
     # Check for archives in metadata for version selector
-    archives = metadata["archives"] if "archives" in metadata else None
+    archives = metadata.get("archives", None)
     create_page(metadata, readme_text, dest_path, last_modified, git_repo_path, archives=archives)
 
     # Initialize nav file content to set title
@@ -1035,7 +1049,7 @@ title: "{title}"
 """
 
     # Check for archives in metadata
-    archives = metadata["archives"] if "archives" in metadata else None
+    archives = metadata.get("archives", None)
     if archives:
         nav_content += process_archived_versions(
             archives, metadata, metadata_path, readme_path, dest_dir, project_type, git_repo_path
@@ -1112,7 +1126,7 @@ def generate_pages() -> None:
     """Generate pages for documentation.
 
     This function orchestrates the entire process of generating API references,
-    copying README files for workflow, applications and operators.
+    copying README files for applications and operators.
 
     Returns:
         None
@@ -1121,7 +1135,18 @@ def generate_pages() -> None:
     try:
         git_repo_path = get_git_root()
         logger.info(f"Git repository root: {git_repo_path}")
-    except Exception as e:
+    except (
+        ArithmeticError,
+        AssertionError,
+        AttributeError,
+        EOFError,
+        ImportError,
+        LookupError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ) as e:
         logger.error(f"Failed to find Git repository root: {e}")
         logger.error("This script requires Git and must be run from within a Git repository.")
         sys.exit(1)
@@ -1148,7 +1173,18 @@ def generate_pages() -> None:
                 parse_metadata_path(
                     metadata_path, components, git_repo_path, processed_parent_readmes
                 )
-            except Exception:
+            except (
+                ArithmeticError,
+                AssertionError,
+                AttributeError,
+                EOFError,
+                ImportError,
+                LookupError,
+                OSError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+            ):
                 logger.error(f"Failed to process {metadata_path}:\n{traceback.format_exc()}")
 
         # Write navigation file to sort components by title
@@ -1193,7 +1229,6 @@ sort:
     nav_content = """
 nav:
 - Home: index.md
-- workflows
 - applications
 - operators
 - tutorials
